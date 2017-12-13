@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp2.0</TargetFramework>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <LangVersion>7.1</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BLTools" Version="4.0.4-CI-20171213-132409" />
+    <PackageReference Include="BLTools.Json.dns.20" Version="4.0.4-CI-20171213-132403" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\BDIndexLib\BDIndexLib.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update=".dockerignore">
+      <DependentUpon>Dockerfile</DependentUpon>
+    </None>
+    <None Update="Dockerfile">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "testapp": {
+      "commandName": "Project",
+      "commandLineArgs": "/folder=i:\\temp.music"
+    }
+  }
+}

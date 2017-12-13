@@ -55,8 +55,8 @@
     <Prefer32Bit>true</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="BLTools.45, Version=3.45.6430.25202, Culture=neutral, PublicKeyToken=42a294c809db3b02, processorArchitecture=MSIL">
-      <HintPath>packages\BLTools.45.20170809.16.0\lib\net45\BLTools.45.dll</HintPath>
+    <Reference Include="BLTools, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>packages\BLTools.4.0.0-CI-20170926-085429\lib\netstandard2.0\BLTools.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />

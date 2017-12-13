@@ -26,7 +26,7 @@ namespace MakeCbz {
       SplitArgs Args = new SplitArgs(args);
 
       string SourceDir = Args.GetValue("sourcedir", "");
-      Console.WriteLine($"Source directory = {SourceDir}");
+      Trace.WriteLine($"Source directory = {SourceDir}");
 
       if ( string.IsNullOrWhiteSpace(SourceDir) || !Directory.Exists(SourceDir) ) {
         Usage($"Missing source directory : directory is missing or access is denied");
