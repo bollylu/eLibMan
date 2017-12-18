@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace BDIndexLib {
 
@@ -15,6 +16,17 @@ namespace BDIndexLib {
 
   public static class TBookType  {
 
+    private static List<EBookType> FileTypes = new List<EBookType>() {
+      EBookType.cbr,
+      EBookType.rar,
+      EBookType.cbz,
+      EBookType.zip,
+      EBookType.cb7,
+      EBookType.pdf
+    };
+
+    
+
     public static EBookType Parse(string source) {
       try {
         return (EBookType)Enum.Parse(typeof(EBookType), source, true);
@@ -24,18 +36,13 @@ namespace BDIndexLib {
     }
 
     public static bool IsFileType(this EBookType bookType) {
-      switch (bookType) {
-        case EBookType.pdf:
-        case EBookType.cbr:
-        case EBookType.rar:
-        case EBookType.cbz:
-        case EBookType.zip:
-        case EBookType.cb7:
-          return true;
-        default:
-          return false;
-      }
+      return FileTypes.Contains(bookType);
     }
+
+    public static bool IsFolderType(this EBookType bookType) {
+      return bookType == EBookType.folder;
+    }
+
   }
 
 

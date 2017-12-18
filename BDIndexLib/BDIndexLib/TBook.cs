@@ -6,6 +6,8 @@ using System.Text.RegularExpressions;
 using System.Diagnostics;
 using System.IO;
 using System.Xml.Linq;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace BDIndexLib {
   public class TBook : BaseItem, IToJson, IDisposable {
@@ -24,21 +26,21 @@ namespace BDIndexLib {
 
     public static string[] Extensions = new string[] { ".pdf", ".rar", ".zip", ".cbr", ".cbz" };
 
-#region --- Public properties ------------------------------------------------------------------------------
+    #region --- Public properties ------------------------------------------------------------------------------
     public string RelativePath { get; set; }
     public string Name { get; set; }
     public string Number { get; set; }
     public string CollectionName { get; set; }
     public EBookType BookType { get; set; }
     public TPageList Pages { get; } = new TPageList();
-#endregion --- Public properties ---------------------------------------------------------------------------
+    #endregion --- Public properties ---------------------------------------------------------------------------
 
-#region --- IParent --------------------------------------------
+    #region --- IParent --------------------------------------------
     public TBookList ParentBookList => GetParent<TBookList>();
     public TRepository ParentRepository => GetParent<TRepository>();
-#endregion --- IParent --------------------------------------------
+    #endregion --- IParent --------------------------------------------
 
-#region --- Constructor(s) ---------------------------------------------------------------------------------
+    #region --- Constructor(s) ---------------------------------------------------------------------------------
     public TBook() : base() {
       Pages.Parent = this;
       BookType = EBookType.unknown;
@@ -58,13 +60,20 @@ namespace BDIndexLib {
 
       string ProcessedName = BookType.IsFileType() ? name.BeforeLast(".") : name;
 
-      if ( !_Parse(ProcessedName) ) {
-        Name = ProcessedName;
+      if ( ProcessedName.Contains("[") || ProcessedName.Contains("=") || ProcessedName.Contains("{") ) {
+        if ( !_NewParse(ProcessedName) ) {
+          Name = ProcessedName;
+        }
+      } else {
+        if ( !_Parse(ProcessedName) ) {
+          Name = ProcessedName;
+        }
       }
 
       RelativePath = relativePath;
 
     }
+
 
     public TBook(TBook book) : this() {
       RelativePath = book.RelativePath;
@@ -82,9 +91,9 @@ namespace BDIndexLib {
       Pages.Dispose();
       Parent = null;
     }
-#endregion --- Constructor(s) ------------------------------------------------------------------------------
+    #endregion --- Constructor(s) ------------------------------------------------------------------------------
 
-#region --- Converters -------------------------------------------------------------------------------------
+    #region --- Converters -------------------------------------------------------------------------------------
     public override string ToString() {
       StringBuilder RetVal = new StringBuilder();
       RetVal.Append($"{BookType.ToString().PadRight(8, '.') } | ");
@@ -113,12 +122,16 @@ namespace BDIndexLib {
       RetVal.SetAttributeValue(XML_ATTRIBUTE_COLLECTION_NAME, CollectionName);
       return RetVal;
     }
-#endregion --- Converters -------------------------------------------------------------------------------------
+    #endregion --- Converters -------------------------------------------------------------------------------------
 
     private static Regex _CTN_Pattern = new Regex(@"^(?<coll>.+) +- +(?<number>S\d+|R\d+|T\d+\.*\d*[a-z]*|THS\d*|HS\d*|BO\d+) +- *(?<name>.+)$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static Regex _CTN2_Pattern = new Regex(@"^(?<coll>.+) +- +(?<number>\d+) +- *(?<name>.+)$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static Regex _CT_Pattern = new Regex(@"^(?<coll>.+) +- +(?<number>\d+|S\d+|R\d+|T\d+\.*\d*[a-z]*|THS\d*|HS\d*)$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static Regex _CN_Pattern = new Regex(@"^(?<coll>.+) +- +(?<name>.+)$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    private static Regex _GetNumber = new Regex(@"=(?<number>.*)=", RegexOptions.Compiled);
+    private static Regex _GetName = new Regex(@"\[(?<name>.*)\]", RegexOptions.Compiled);
+    private static Regex _GetCollectionNames = new Regex(@"(?<coll>{.*?})", RegexOptions.Compiled);
 
     private bool _Parse(string source) {
 
@@ -174,5 +187,34 @@ namespace BDIndexLib {
       string Extension = Path.GetExtension(name).AfterLast(".");
       return TBookType.Parse(Extension);
     }
+
+    private bool _NewParse(string processedName) {
+      if ( string.IsNullOrWhiteSpace(processedName) ) {
+        return false;
+      }
+
+      Match MatchNumber = _GetNumber.Match(processedName);
+      if (MatchNumber.Success) {
+        Number = MatchNumber.Groups["number"].Value;
+      }
+
+      Match MatchName = _GetName.Match(processedName);
+      if ( MatchName.Success ) {
+        Name = MatchName.Groups["name"].Value;
+      }
+
+      StringBuilder CollectionBuilder = new StringBuilder();
+      foreach ( Match MatchCollectionNameItem in _GetCollectionNames.Matches(processedName) ) {
+        string TextItem = MatchCollectionNameItem.Groups["coll"].Value.TrimStart('{').TrimEnd('}');
+        CollectionBuilder.Insert(0, $"{TextItem}/");
+      }
+      if (CollectionBuilder.Length>0) {
+        CollectionBuilder.Truncate(1);
+      }
+      CollectionName = CollectionBuilder.ToString();
+      return true; 
+
+    }
+
   }
 }

@@ -2,7 +2,7 @@
   "profiles": {
     "ConsoleTest": {
       "commandName": "Project",
-      "commandLineArgs": "-source=\"\\\\andromeda\\elibrary\\bandes dessinées\" -name=\"BDLuc\" /outputformat=json"
+      "commandLineArgs": "-source=\"\\\\andromeda\\elibrary\\bandes dessinées\\====[Western]====\" -name=\"BDLuc\" /outputformat=txt"
     }
   }
 }
