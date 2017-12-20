@@ -30,7 +30,13 @@ namespace BDIndexLib {
     public string RelativePath { get; set; }
     public string Name { get; set; }
     public string Number { get; set; }
-    public string CollectionName { get; set; }
+
+    public readonly SortedDictionary<int, string> CollectionNameComponents = new SortedDictionary<int, string>();
+    public string CollectionName {
+      get {
+        return string.Join(" / ", CollectionNameComponents.Values);
+      }
+    }
     public EBookType BookType { get; set; }
     public TPageList Pages { get; } = new TPageList();
     #endregion --- Public properties ---------------------------------------------------------------------------
@@ -44,13 +50,12 @@ namespace BDIndexLib {
     public TBook() : base() {
       Pages.Parent = this;
       BookType = EBookType.unknown;
-      CollectionName = "";
       Number = "";
       Name = "";
       RelativePath = "";
     }
 
-    public TBook(string name, EBookType bookType = EBookType.folder, string relativePath = "") : this() {
+    public TBook(string name, TParsingParameters parsingParameters, EBookType bookType = EBookType.folder, string relativePath = "") : this() {
 
       if ( bookType == EBookType.unknown ) {
         BookType = _FindBookType(name);
@@ -60,11 +65,7 @@ namespace BDIndexLib {
 
       string ProcessedName = BookType.IsFileType() ? name.BeforeLast(".") : name;
 
-      if ( ProcessedName.Contains("[") || ProcessedName.Contains("=") || ProcessedName.Contains("{") ) {
-        if ( !_NewParse(ProcessedName) ) {
-          Name = ProcessedName;
-        }
-      } else {
+      if ( !_NewParse(ProcessedName, parsingParameters) ) {
         if ( !_Parse(ProcessedName) ) {
           Name = ProcessedName;
         }
@@ -79,7 +80,9 @@ namespace BDIndexLib {
       RelativePath = book.RelativePath;
       Name = book.Name;
       Number = book.Number;
-      CollectionName = book.CollectionName;
+      foreach ( KeyValuePair<int, string> CollectionNameComponentItem in book.CollectionNameComponents ) {
+        CollectionNameComponents.Add(CollectionNameComponentItem.Key, CollectionNameComponentItem.Value);
+      }
       BookType = book.BookType;
       Pages.Clear();
       foreach ( TPage PageItem in book.Pages ) {
@@ -88,6 +91,7 @@ namespace BDIndexLib {
     }
 
     public void Dispose() {
+      CollectionNameComponents.Clear();
       Pages.Dispose();
       Parent = null;
     }
@@ -129,11 +133,11 @@ namespace BDIndexLib {
     private static Regex _CT_Pattern = new Regex(@"^(?<coll>.+) +- +(?<number>\d+|S\d+|R\d+|T\d+\.*\d*[a-z]*|THS\d*|HS\d*)$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static Regex _CN_Pattern = new Regex(@"^(?<coll>.+) +- +(?<name>.+)$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
-    private static Regex _GetNumber = new Regex(@"=(?<number>.*)=", RegexOptions.Compiled);
-    private static Regex _GetName = new Regex(@"\[(?<name>.*)\]", RegexOptions.Compiled);
-    private static Regex _GetCollectionNames = new Regex(@"(?<coll>{.*?})", RegexOptions.Compiled);
+    private static Regex GetOrder = new Regex(@"^\((?<order>.*?)\).*$", RegexOptions.Compiled);
 
     private bool _Parse(string source) {
+
+      CollectionNameComponents.Clear();
 
       Match m;
 
@@ -141,7 +145,7 @@ namespace BDIndexLib {
       if ( m.Groups.Count == 4 ) {
 
         Name = m.Groups["name"].Value;
-        CollectionName = m.Groups["coll"].Value;
+        CollectionNameComponents.Add(1, m.Groups["coll"].Value.Replace(" - ", " / "));
         Number = m.Groups["number"].Value;
 
         return true;
@@ -151,7 +155,7 @@ namespace BDIndexLib {
       if ( m.Groups.Count == 4 ) {
 
         Name = m.Groups["name"].Value;
-        CollectionName = m.Groups["coll"].Value;
+        CollectionNameComponents.Add(1, m.Groups["coll"].Value.Replace(" - ", " / "));
         Number = m.Groups["number"].Value;
 
         return true;
@@ -160,7 +164,7 @@ namespace BDIndexLib {
       m = _CT_Pattern.Match(source);
       if ( m.Groups.Count == 3 ) {
 
-        CollectionName = m.Groups["coll"].Value;
+        CollectionNameComponents.Add(1, m.Groups["coll"].Value.Replace(" - ", " / "));
         Number = m.Groups["number"].Value;
 
         return true;
@@ -170,7 +174,7 @@ namespace BDIndexLib {
       if ( m.Groups.Count == 3 ) {
 
         Name = m.Groups["name"].Value;
-        CollectionName = m.Groups["coll"].Value;
+        CollectionNameComponents.Add(1, m.Groups["coll"].Value.Replace(" - ", " / "));
 
         return true;
       }
@@ -188,31 +192,65 @@ namespace BDIndexLib {
       return TBookType.Parse(Extension);
     }
 
-    private bool _NewParse(string processedName) {
+    private bool _NewParse(string processedName, TParsingParameters parsingParameters) {
+
       if ( string.IsNullOrWhiteSpace(processedName) ) {
         return false;
       }
 
+      Regex _GetNumber = new Regex($@"{parsingParameters.NumberStartDelimiter}(?<number>.*?){parsingParameters.NumberEndDelimiter}");
+      Regex _GetName = new Regex($@"{parsingParameters.TitleStartDelimiter}(?<name>.*?){parsingParameters.TitleEndDelimiter}");
+      Regex _GetCollectionNames = new Regex($@"(?<coll>{parsingParameters.CollectionNameStartDelimiter}.*?{parsingParameters.CollectionNameEndDelimiter})");
+
       Match MatchNumber = _GetNumber.Match(processedName);
-      if (MatchNumber.Success) {
-        Number = MatchNumber.Groups["number"].Value;
-      }
-
       Match MatchName = _GetName.Match(processedName);
-      if ( MatchName.Success ) {
-        Name = MatchName.Groups["name"].Value;
+      MatchCollection MatchCollectionNames = _GetCollectionNames.Matches(processedName);
+
+      if ( !MatchNumber.Success && !MatchName.Success && MatchCollectionNames.Count == 0 ) {
+        return false;
       }
 
-      StringBuilder CollectionBuilder = new StringBuilder();
-      foreach ( Match MatchCollectionNameItem in _GetCollectionNames.Matches(processedName) ) {
-        string TextItem = MatchCollectionNameItem.Groups["coll"].Value.TrimStart('{').TrimEnd('}');
-        CollectionBuilder.Insert(0, $"{TextItem}/");
+      if ( MatchNumber.Success ) {
+        Number = MatchNumber.Groups["number"].Value.Trim();
       }
-      if (CollectionBuilder.Length>0) {
-        CollectionBuilder.Truncate(1);
+
+      if ( MatchName.Success ) {
+        Name = MatchName.Groups["name"].Value.Trim();
+      } else {
+        Name = "(missing)";
       }
-      CollectionName = CollectionBuilder.ToString();
-      return true; 
+
+      int i;
+      switch ( parsingParameters.CollectionNamesOrder ) {
+        case TParsingParameters.ECollectionNameOrder.Normal:
+          i = 0;
+          break;
+        case TParsingParameters.ECollectionNameOrder.Reverse:
+          i = int.MaxValue;
+          break;
+        default:
+          i = 0;
+          break;
+      }
+      foreach ( Match MatchCollectionNameItem in MatchCollectionNames ) {
+        string TextItem = MatchCollectionNameItem.Value.TrimStart('{').TrimEnd('}').Trim();
+        Match MatchOrder = GetOrder.Match(TextItem);
+        if ( MatchOrder.Success ) {
+          CollectionNameComponents.Add((byte)( MatchOrder.Groups["order"].Value.After('(').First() ), TextItem.Substring(3));
+        } else {
+          CollectionNameComponents.Add(i, TextItem);
+          switch ( parsingParameters.CollectionNamesOrder ) {
+            case TParsingParameters.ECollectionNameOrder.Normal:
+              i++;
+              break;
+            case TParsingParameters.ECollectionNameOrder.Reverse:
+              i--;
+              break;
+          }
+        }
+      }
+
+      return true;
 
     }
 

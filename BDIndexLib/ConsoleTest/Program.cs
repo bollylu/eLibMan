@@ -87,7 +87,7 @@ namespace ConsoleTest {
       //}
 
       Console.WriteLine($"Indexing process completed in {chrono.ElapsedTime.TotalSeconds} secs");
-      ConsoleExtension.Pause();
+      //ConsoleExtension.Pause();
 
       //Environment.Exit(0);
     }

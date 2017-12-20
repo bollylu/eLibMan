@@ -123,6 +123,10 @@ namespace BDIndexLib {
     }
 
     private void _ImportFolder(string folder) {
+      _ImportFolder(folder, TParsingParameters.Default);
+    }
+
+    private void _ImportFolder(string folder, TParsingParameters parsingParameters) {
       #region Validate parameters
       if ( string.IsNullOrWhiteSpace(folder) ) {
         Trace.WriteLine("Unable to import empty folder");
@@ -136,6 +140,14 @@ namespace BDIndexLib {
       }
       #endregion Validate parameters
 
+      TParsingParameters LocalParsingParameters;
+      string BdIndexParameterFilename = Path.Combine(folder, "bdindex.json");
+      if ( File.Exists(BdIndexParameterFilename) ) {
+        LocalParsingParameters = new TParsingParameters(BdIndexParameterFilename);
+      } else {
+        LocalParsingParameters = new TParsingParameters(parsingParameters);
+      }
+
       DirectoryInfo FolderInfo = new DirectoryInfo(FolderFullPath);
 
       IEnumerable<DirectoryInfo> InnerDirectories = FolderInfo.EnumerateDirectories();
@@ -148,23 +160,26 @@ namespace BDIndexLib {
                                                        .Where(f => TPage.Extensions.Contains(f.Extension.ToLower()));
         if ( PageFiles.Any() ) {
           #region Found a book as a folder
-          TBook NewBook = new TBook(DirectoryItem.Name, EBookType.folder, DirectoryItem.FullName.After(RootPath));
+          TBook NewBook = new TBook(DirectoryItem.Name, LocalParsingParameters, EBookType.folder, DirectoryItem.FullName.After(RootPath));
           //Trace.WriteLine(NewBook.ToString());
           Books.Add(NewBook);
           #endregion Found a book as a folder
         } else {
           #region Dig deeper into directories
-          _ImportFolder(DirectoryItem.FullName);
+          _ImportFolder(DirectoryItem.FullName, LocalParsingParameters);
           #endregion Dig deeper into directories
         }
       }
       #endregion Folder as book or folder as group
 
       #region Archived files as books
-      foreach ( FileInfo FileItem in InnerFiles ) {
-        TBook NewBook = new TBook(FileItem.Name, EBookType.unknown, FileItem.FullName.After(RootPath).BeforeLast(@"\"));
-        //Trace.WriteLine(NewBook.ToString());
-        Books.Add(NewBook);
+      if (InnerFiles.Any()) {
+        
+        foreach ( FileInfo FileItem in InnerFiles ) {
+          TBook NewBook = new TBook(FileItem.Name, LocalParsingParameters, EBookType.unknown, FileItem.FullName.After(RootPath).BeforeLast(@"\"));
+
+          Books.Add(NewBook);
+        }
       }
       #endregion Archived files as books
 

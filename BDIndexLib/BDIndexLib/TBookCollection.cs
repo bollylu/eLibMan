@@ -31,7 +31,11 @@ namespace BDIndexLib {
             if ( !Items.Any() ) {
               _RelativePath = "";
             }
-            _RelativePath = Items.First().RelativePath.BeforeLast(DirectorySeparator);
+            if ( Items.First().BookType.IsFolderType() ) {
+              _RelativePath = Items.First().RelativePath.BeforeLast(DirectorySeparator);
+            } else {
+              _RelativePath = Items.First().RelativePath;
+            }
           }
         }
         return _RelativePath;
@@ -71,9 +75,10 @@ namespace BDIndexLib {
       StringBuilder RetVal = new StringBuilder();
       RetVal.AppendLine(TextBox.BuildDynamicIBM($"{Name}"));
       lock ( _LockItems ) {
+        int LargestNumberColumn = Items.Max(x => x.Number.Length);
         foreach ( TBook BookItem in Items ) {
           RetVal.Append($"{BookItem.BookType.ToString().PadRight(8, '.') } | ");
-          RetVal.Append($"{BookItem.Number.PadRight(6, '.')} | ");
+          RetVal.Append($"{BookItem.Number.PadRight(LargestNumberColumn, '.')} | ");
           RetVal.Append($"{BookItem.Name}");
           RetVal.AppendLine();
         }
