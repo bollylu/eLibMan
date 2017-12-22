@@ -2,6 +2,7 @@
 using BLTools.Json;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -19,16 +20,16 @@ namespace BDIndexLib {
     public const string JSON_ITEM_COLLECTION_NAME_END_DELIMITER = "CollectionNameEndDelimiters";
     public const string JSON_ITEM_COLLECTION_NAME_ORDER = "CollectionNamesOrder";
 
-    public const string DEFAULT_TITLE_START_DELIMITER = @"\[";
-    public const string DEFAULT_TITLE_END_DELIMITER = @"\]";
+    public const string DEFAULT_TITLE_START_DELIMITER = @"[";
+    public const string DEFAULT_TITLE_END_DELIMITER = @"]";
 
     public const string DEFAULT_NUMBER_START_DELIMITER = "=";
     public const string DEFAULT_NUMBER_END_DELIMITER = "=";
 
-    public const string DEFAULT_COLLECTION_NAME_START_DELIMITER = @"\{";
-    public const string DEFAULT_COLLECTION_NAME_END_DELIMITER = @"\}";
+    public const string DEFAULT_COLLECTION_NAME_START_DELIMITER = @"{";
+    public const string DEFAULT_COLLECTION_NAME_END_DELIMITER = @"}";
 
-    public const ECollectionNameOrder DEFAULT_COLLECTION_NAMES_ORDER = ECollectionNameOrder.Normal; 
+    public const ECollectionNameOrder DEFAULT_COLLECTION_NAMES_ORDER = ECollectionNameOrder.Normal;
     #endregion --- Constants --------------------------------------------
 
     public enum ECollectionNameOrder {
@@ -128,22 +129,10 @@ namespace BDIndexLib {
     private ECollectionNameOrder _CollectionNamesOrder = ECollectionNameOrder.Unknown;
     #endregion --- Public properties ---------------------------------------------------------------------------
 
-    #region --- Constructor(s) ---------------------------------------------------------------------------------
     public static TParsingParameters Default => new TParsingParameters();
 
+    #region --- Constructor(s) ---------------------------------------------------------------------------------
     public TParsingParameters() { }
-
-    public TParsingParameters(string filename) {
-      if ( string.IsNullOrWhiteSpace(filename) ) {
-        return;
-      }
-      if ( !File.Exists(filename) ) {
-        return;
-      }
-      JsonObject Parameters = JsonValue.Load(filename) as JsonObject;
-      JsonObject Parsing = Parameters.SafeGetValueFirst<JsonObject>(JSON_THIS_ELEMENT);
-      _Init(Parsing);
-    }
 
     public TParsingParameters(IJsonValue parameters) {
       _Init(parameters);
@@ -177,8 +166,25 @@ namespace BDIndexLib {
           }
         }
       }
-    } 
+    }
     #endregion --- Constructor(s) ------------------------------------------------------------------------------
 
+    public bool Load(string filename) {
+      if ( string.IsNullOrWhiteSpace(filename) ) {
+        return false;
+      }
+      if ( !File.Exists(filename) ) {
+        return false;
+      }
+      try {
+        JsonObject Parameters = JsonValue.Load(filename) as JsonObject;
+        JsonObject Parsing = Parameters.SafeGetValueFirst<JsonObject>(JSON_THIS_ELEMENT);
+        _Init(Parsing);
+        return true;
+      } catch ( Exception ex ) {
+        Trace.WriteLine($"Unable to load TParsingParameters from {filename} : {ex.Message}");
+        return false;
+      }
+    }
   }
 }

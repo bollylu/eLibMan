@@ -32,7 +32,7 @@ namespace ConsoleTest {
       string OutputFilename = Args.GetValue<string>("output", "bdindex");
       string OutputFormat = Args.GetValue<string>("outputformat", "txt").ToLower();
       List<string> AllowedFormats = new List<string>() { "txt", "json", "xml" };
-      if (!AllowedFormats.Contains(OutputFormat)) {
+      if ( !AllowedFormats.Contains(OutputFormat) ) {
         OutputFormat = "txt";
       }
 
@@ -48,12 +48,29 @@ namespace ConsoleTest {
       TRepository CurrentRepository = new TRepository(SourceRepository, RepositoryName);
       await CurrentRepository.BuildIndex();
 
+      Console.WriteLine($"Total folders : {CurrentRepository.Books.EnumerateCollections().Count()}");
+      Console.WriteLine($"Found (...) folders : {CurrentRepository.Books.EnumerateCollections().Count(x => x.HasArticle)}");
+
+      Console.WriteLine("------------------ Display name -----------------");
+
+      foreach ( IEnumerable<TBookCollection> BookCollectionItems in CurrentRepository.Books.EnumerateCollections().OrderBy(x=>x.DisplayName).GroupBy(x => x.DisplayName.First()) ) {
+        Console.Write($"{BookCollectionItems.First().DisplayName.First()} : ");
+        Console.WriteLine(new string('#', BookCollectionItems.Count()));
+      }
+
+      Console.WriteLine("------------------ Name -----------------");
+
+      foreach ( IEnumerable<TBookCollection> BookCollectionItems in CurrentRepository.Books.EnumerateCollections().OrderBy(x => x.Name).GroupBy(x => x.Name.First()) ) {
+        Console.Write($"{BookCollectionItems.First().Name.First()} : ");
+        Console.WriteLine(new string('#', BookCollectionItems.Count()));
+      }
+
       OutputFilename += $".{OutputFormat}";
       if ( File.Exists(OutputFilename) ) {
         File.Delete(OutputFilename);
       }
 
-      switch (OutputFormat) {
+      switch ( OutputFormat ) {
         case "txt":
           foreach ( TBookCollection BookCollectionItem in CurrentRepository.Books.EnumerateCollections() ) {
             File.AppendAllText(OutputFilename, BookCollectionItem.ToString());
@@ -68,7 +85,7 @@ namespace ConsoleTest {
           break;
       }
 
-      
+
 
       //TBookCollection MissingInBrilly = new TBookCollection(BdBrilly.Books.GetMissingFrom(BdLuc.Books));
       //TBookCollection MissingInLuc = new TBookCollection(BdLuc.Books.GetMissingFrom(BdBrilly.Books));

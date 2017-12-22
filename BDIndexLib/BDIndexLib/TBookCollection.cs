@@ -16,13 +16,26 @@ namespace BDIndexLib {
     public string Name {
       get {
         lock ( _LockItems ) {
-          if ( !Items.Any() ) {
-            return "";
+          if ( Items.Any() ) {
+            return Items.First().CollectionName;
           }
-          return Items.First().CollectionName;
+          return "";
         }
       }
     }
+
+    public string DisplayName {
+      get {
+        lock ( _LockItems ) {
+          if ( Items.Any() ) {
+            return Items.First().DisplayCollectionName;
+          }
+          return "";
+        }
+      }
+    }
+
+    public bool HasArticle => Name != DisplayName;
 
     public string RelativePath {
       get {
@@ -73,12 +86,14 @@ namespace BDIndexLib {
 
     public override string ToString() {
       StringBuilder RetVal = new StringBuilder();
-      RetVal.AppendLine(TextBox.BuildDynamicIBM($"{Name}"));
+      RetVal.AppendLine(TextBox.BuildDynamicIBM($"{DisplayName}"));
       lock ( _LockItems ) {
         int LargestNumberColumn = Items.Max(x => x.Number.Length);
         foreach ( TBook BookItem in Items ) {
           RetVal.Append($"{BookItem.BookType.ToString().PadRight(8, '.') } | ");
-          RetVal.Append($"{BookItem.Number.PadRight(LargestNumberColumn, '.')} | ");
+          if ( LargestNumberColumn > 0 ) {
+            RetVal.Append($"{BookItem.Number.PadRight(LargestNumberColumn, '.')} | ");
+          }
           RetVal.Append($"{BookItem.Name}");
           RetVal.AppendLine();
         }

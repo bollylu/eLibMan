@@ -140,12 +140,10 @@ namespace BDIndexLib {
       }
       #endregion Validate parameters
 
-      TParsingParameters LocalParsingParameters;
+      TParsingParameters LocalParsingParameters= new TParsingParameters(parsingParameters);
       string BdIndexParameterFilename = Path.Combine(folder, "bdindex.json");
       if ( File.Exists(BdIndexParameterFilename) ) {
-        LocalParsingParameters = new TParsingParameters(BdIndexParameterFilename);
-      } else {
-        LocalParsingParameters = new TParsingParameters(parsingParameters);
+        LocalParsingParameters.Load(BdIndexParameterFilename);
       }
 
       DirectoryInfo FolderInfo = new DirectoryInfo(FolderFullPath);
@@ -177,7 +175,6 @@ namespace BDIndexLib {
         
         foreach ( FileInfo FileItem in InnerFiles ) {
           TBook NewBook = new TBook(FileItem.Name, LocalParsingParameters, EBookType.unknown, FileItem.FullName.After(RootPath).BeforeLast(@"\"));
-
           Books.Add(NewBook);
         }
       }

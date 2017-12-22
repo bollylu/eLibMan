@@ -12,11 +12,13 @@ using System.Linq;
 namespace BDIndexLib {
   public class TBook : BaseItem, IToJson, IDisposable {
 
+    #region --- Constants --------------------------------------------
     public const string XML_THIS_ELEMENT = "Book";
     public const string XML_ATTRIBUTE_NAME = "Name";
     public const string XML_ATTRIBUTE_NUMBER = "Number";
     public const string XML_ATTRIBUTE_BOOK_TYPE = "BookType";
     public const string XML_ATTRIBUTE_COLLECTION_NAME = "CollectionName";
+    #endregion --- Constants --------------------------------------------
 
 #if DEBUG
     public static bool IsDebug = true;
@@ -29,14 +31,13 @@ namespace BDIndexLib {
     #region --- Public properties ------------------------------------------------------------------------------
     public string RelativePath { get; set; }
     public string Name { get; set; }
+
     public string Number { get; set; }
 
     public readonly SortedDictionary<int, string> CollectionNameComponents = new SortedDictionary<int, string>();
-    public string CollectionName {
-      get {
-        return string.Join(" / ", CollectionNameComponents.Values);
-      }
-    }
+    public string CollectionName => string.Join(" / ", CollectionNameComponents.Values);
+    public string DisplayCollectionName => string.Join(" / ", CollectionNameComponents.Values.Select(x => x.MoveArticleToStart()));
+
     public EBookType BookType { get; set; }
     public TPageList Pages { get; } = new TPageList();
     #endregion --- Public properties ---------------------------------------------------------------------------
@@ -71,10 +72,17 @@ namespace BDIndexLib {
         }
       }
 
+      if ( !CollectionNameComponents.Any() ) {
+        int i = 0;
+        foreach ( string PathItem in relativePath.Split('\\') ) {
+          CollectionNameComponents.Add(i++, PathItem);
+        }
+
+      }
+
       RelativePath = relativePath;
 
     }
-
 
     public TBook(TBook book) : this() {
       RelativePath = book.RelativePath;
@@ -102,8 +110,12 @@ namespace BDIndexLib {
       StringBuilder RetVal = new StringBuilder();
       RetVal.Append($"{BookType.ToString().PadRight(8, '.') } | ");
       RetVal.Append($"{CollectionName.PadRight(80, '.')} | ");
-      RetVal.Append($"{Number.PadRight(6, '.')} | ");
-      RetVal.Append($"{Name.PadRight(80, '.')} | ");
+      if ( !string.IsNullOrWhiteSpace(Number) ) {
+        RetVal.Append($"{Number.PadRight(6, '.')} | ");
+      }
+      if ( !string.IsNullOrWhiteSpace(Name) ) {
+        RetVal.Append($"{Name.PadRight(80, '.')} | ");
+      }
       RetVal.Append($"{RelativePath}");
       return RetVal.ToString();
     }
@@ -116,8 +128,6 @@ namespace BDIndexLib {
       }
       return RetVal;
     }
-
-
     public XElement ToXml() {
       XElement RetVal = new XElement(XML_THIS_ELEMENT);
       RetVal.SetAttributeValue(XML_ATTRIBUTE_NAME, Name);
@@ -179,7 +189,7 @@ namespace BDIndexLib {
         return true;
       }
 
-      Trace.WriteLine(source);
+      //Trace.WriteLine(source);
 
       return false;
     }
@@ -198,9 +208,9 @@ namespace BDIndexLib {
         return false;
       }
 
-      Regex _GetNumber = new Regex($@"{parsingParameters.NumberStartDelimiter}(?<number>.*?){parsingParameters.NumberEndDelimiter}");
-      Regex _GetName = new Regex($@"{parsingParameters.TitleStartDelimiter}(?<name>.*?){parsingParameters.TitleEndDelimiter}");
-      Regex _GetCollectionNames = new Regex($@"(?<coll>{parsingParameters.CollectionNameStartDelimiter}.*?{parsingParameters.CollectionNameEndDelimiter})");
+      Regex _GetNumber = new Regex($@"(?<number>{Regex.Escape(parsingParameters.NumberStartDelimiter)}.*?{Regex.Escape(parsingParameters.NumberEndDelimiter)})");
+      Regex _GetName = new Regex($@"(?<title>{Regex.Escape(parsingParameters.TitleStartDelimiter)}.*?{Regex.Escape(parsingParameters.TitleEndDelimiter)})");
+      Regex _GetCollectionNames = new Regex($@"(?<coll>{Regex.Escape(parsingParameters.CollectionNameStartDelimiter)}.*?{Regex.Escape(parsingParameters.CollectionNameEndDelimiter)})");
 
       Match MatchNumber = _GetNumber.Match(processedName);
       Match MatchName = _GetName.Match(processedName);
@@ -211,14 +221,15 @@ namespace BDIndexLib {
       }
 
       if ( MatchNumber.Success ) {
-        Number = MatchNumber.Groups["number"].Value.Trim();
+        Number = MatchNumber.Groups["number"].Value.After(parsingParameters.NumberStartDelimiter).BeforeLast(parsingParameters.NumberEndDelimiter).Trim();
       }
 
       if ( MatchName.Success ) {
-        Name = MatchName.Groups["name"].Value.Trim();
-      } else {
-        Name = "(missing)";
+        Name = MatchName.Groups["title"].Value.After(parsingParameters.TitleStartDelimiter).BeforeLast(parsingParameters.TitleEndDelimiter).Trim();
       }
+      //} else {
+      //  Name = "(missing)";
+      //}
 
       int i;
       switch ( parsingParameters.CollectionNamesOrder ) {
@@ -232,8 +243,9 @@ namespace BDIndexLib {
           i = 0;
           break;
       }
+
       foreach ( Match MatchCollectionNameItem in MatchCollectionNames ) {
-        string TextItem = MatchCollectionNameItem.Value.TrimStart('{').TrimEnd('}').Trim();
+        string TextItem = MatchCollectionNameItem.Value.After(parsingParameters.CollectionNameStartDelimiter).BeforeLast(parsingParameters.CollectionNameEndDelimiter).Trim();
         Match MatchOrder = GetOrder.Match(TextItem);
         if ( MatchOrder.Success ) {
           CollectionNameComponents.Add((byte)( MatchOrder.Groups["order"].Value.After('(').First() ), TextItem.Substring(3));
@@ -253,6 +265,7 @@ namespace BDIndexLib {
       return true;
 
     }
+
 
   }
 }
